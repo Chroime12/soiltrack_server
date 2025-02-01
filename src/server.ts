@@ -17,8 +17,10 @@ interface MoistureData {
 let moistureData: MoistureData = { value: 0, timeStamp: null };
 
 app.post("/update-moisture", (req: Request, res: Response) => {
+  console.log("Received Data:", req.body);
   const { value } = req.body;
   moistureData = { value, timeStamp: new Date() };
+  console.log(`Updated Moisture Data:`, moistureData);
   res.json(moistureData);
 });
 
