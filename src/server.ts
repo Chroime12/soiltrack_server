@@ -23,7 +23,7 @@ const client = mqtt.connect(MQTT_BROKER, {
 client.on("connect", () => {
   console.log("Connected to MQTT Broker");
 
-  const topic = "soiltrack/test";
+  const topic = "soiltrack/moisture";
 
   client.subscribe(topic, (err) => {
     if (err) {
@@ -38,10 +38,10 @@ client.on("message", (topic, message) => {
   console.log(`📩 Received message on topic '${topic}': ${message.toString()}`);
 
   try {
-    console.log("🛠 Raw Message Data:", message); // Debugging raw message
+    console.log("🛠 Raw Message Data:", message);
 
     const data = JSON.parse(message.toString());
-    console.log("✅ Parsed Data:", data); // Check what gets parsed
+    console.log("✅ Parsed Data:", data);
 
     if (data.moisture !== undefined) {
       console.log(`🌱 Soil Moisture: ${data.moisture}%`);
