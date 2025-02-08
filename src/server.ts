@@ -67,6 +67,7 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
   }
 
   console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
+  res.json({ message: `Pump turned ${pumpStatus}` });
 
   // client.publish(
   //   "soiltrack/pump",
