@@ -66,21 +66,14 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
     return;
   }
 
-  console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
-  res.json({ message: `Pump turned ${pumpStatus}` });
-
-  // client.publish(
-  //   "soiltrack/pump",
-  //   JSON.stringify({ pump: pumpStatus }),
-  //   (err) => {
-  //     if (err) {
-  //       console.error(`❌ Error publishing pump status: ${err}`);
-  //       return res.status(500).json({ message: "Error toggling pump" });
-  //     }
-  //     console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
-  //     res.json({ message: `Pump turned ${pumpStatus}` });
-  //   }
-  // );
+  client.publish("soiltrack/pump", pumpStatus, (err) => {
+    if (err) {
+      console.error(`❌ Error publishing pump status: ${err}`);
+      return res.status(500).json({ message: "Error toggling pump" });
+    }
+    console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
+    res.json({ message: `Pump turned ${pumpStatus}` });
+  });
 });
 
 const PORT = process.env.PORT || 3000;
