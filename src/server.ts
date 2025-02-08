@@ -1,4 +1,5 @@
-import express, { Request, Response } from "express";
+import express from "express";
+import type { Request, Response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
@@ -55,6 +56,30 @@ client.on("message", (topic, message) => {
   } catch (error) {
     console.error(`❌ Error parsing message: ${error}`);
   }
+});
+
+app.post("/toggle-pump", (req: Request, res: Response): void => {
+  const { pumpStatus } = req.body;
+
+  if (pumpStatus !== "ON" && pumpStatus !== "OFF") {
+    res.status(400).json({ message: "Invalid pump status" });
+    return;
+  }
+
+  console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
+
+  // client.publish(
+  //   "soiltrack/pump",
+  //   JSON.stringify({ pump: pumpStatus }),
+  //   (err) => {
+  //     if (err) {
+  //       console.error(`❌ Error publishing pump status: ${err}`);
+  //       return res.status(500).json({ message: "Error toggling pump" });
+  //     }
+  //     console.log(`🚰 Pump Command Sent: ${pumpStatus}`);
+  //     res.json({ message: `Pump turned ${pumpStatus}` });
+  //   }
+  // );
 });
 
 const PORT = process.env.PORT || 3000;
