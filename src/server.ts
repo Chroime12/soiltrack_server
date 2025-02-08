@@ -38,18 +38,22 @@ client.on("message", (topic, message) => {
   console.log(`📩 Received message on topic '${topic}': ${message.toString()}`);
 
   try {
-    console.log("🛠 Raw Message Data:", message);
-
     const data = JSON.parse(message.toString());
-    console.log("✅ Parsed Data:", data);
+    console.log(`🛠 Raw Message Data:`, message);
 
-    if (data.moisture !== undefined) {
-      console.log(`🌱 Soil Moisture: ${data.moisture}%`);
+    if (!("moisture1" in data) || !("moisture2" in data)) {
+      console.warn(
+        `⚠️ Moisture1 or Moisture2 key missing in received data:`,
+        data
+      );
     } else {
-      console.warn("⚠️ Moisture key missing in received data:", data);
+      console.log(`✅ Parsed Data:`, data);
+      console.log(
+        `🌱 Moisture 1: ${data.moisture1}% | 🌱 Moisture 2: ${data.moisture2}%`
+      );
     }
   } catch (error) {
-    console.error("❌ Error parsing message:", error);
+    console.error(`❌ Error parsing message: ${error}`);
   }
 });
 
