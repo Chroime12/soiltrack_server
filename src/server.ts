@@ -21,7 +21,7 @@ const client = mqtt.connect(MQTT_BROKER, {
   password: MQTT_PASSWORD,
 });
 
-let resetResponseReceived = false;
+let resetMessageReceived = false;
 
 client.on("connect", () => {
   console.log("Connected to MQTT Broker");
@@ -44,7 +44,7 @@ client.on("message", (topic, message) => {
   if (topic === "soiltrack/reset/status") {
     if (messageStr === "RESET_SUCCESS") {
       console.log(`✅ ESP32 responded with: ${messageStr}`);
-      resetResponseReceived = true;
+      resetMessageReceived = true;
     }
     return;
   }
@@ -88,7 +88,7 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
 
 app.post("/reset-wifi", (req: Request, res: Response): void => {
   console.log("🔄 Reset Request Sent");
-  resetResponseReceived = false;
+  resetMessageReceived = false;
 
   client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
     if (err) {
@@ -99,7 +99,7 @@ app.post("/reset-wifi", (req: Request, res: Response): void => {
 
   let retries = 10;
   const checkInterval = setInterval(() => {
-    if (resetResponseReceived) {
+    if (resetMessageReceived) {
       clearInterval(checkInterval);
       return res.json({ message: "Device reset successfully" });
     }
@@ -109,6 +109,50 @@ app.post("/reset-wifi", (req: Request, res: Response): void => {
     }
     retries--;
   }, 1000);
+});
+
+app.post("/send-api-key", (req: Request, res: Response): void => {
+  const { mac_address, api_key } = req.body;
+
+  if (!mac_address || !api_key) {
+    res.status(400).json({ message: "Missing Parameters" });
+    return;
+  }
+
+  const publishTopic = `soiltrack/device/${mac_address}/api-key`;
+  const responseTopic = "soiltrack/device/api-key/status";
+
+  console.log(`📡 Sending API Key to ESP32 on topic: ${publishTopic}`);
+  let apiKeySaved = false;
+
+  client.publish(publishTopic, api_key, (err) => {
+    if (err) {
+      console.error("❌ Error sending API Key:", err);
+      return res.status(500).json({ message: "Error sending API Key" });
+    }
+  });
+
+  let retries = 10;
+  const checkInterval = setInterval(() => {
+    if (apiKeySaved) {
+      clearInterval(checkInterval);
+      return res.json({ message: "API Key saved successfully!" });
+    }
+
+    if (retries === 0) {
+      clearInterval(checkInterval);
+      return res.status(500).json({ message: "No response from ESP32." });
+    }
+
+    retries--;
+  }, 1000);
+
+  client.on("message", (topic, message) => {
+    if (topic === responseTopic && message.toString().trim() === "SAVED") {
+      console.log("✅ ESP32 confirmed API Key saved.");
+      apiKeySaved = true;
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;
