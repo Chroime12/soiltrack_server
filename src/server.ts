@@ -79,31 +79,39 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
 app.post("/reset-wifi", (req: Request, res: Response): void => {
   console.log("🔄 Reset request received, sending MQTT command...");
 
+  // Publish reset command
   client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
     if (err) {
-      console.error(`❌ Error publishing reset command: ${err}`);
+      console.error("❌ Error publishing reset command:", err);
       return res.status(500).json({ message: "Error resetting device" });
     }
+    console.log("📡 Reset command sent, waiting for ESP32 response...");
+
+    // Wait for ESP32 confirmation
+    const timeout = setTimeout(() => {
+      console.error("❌ Device did not respond to reset command");
+      res
+        .status(500)
+        .json({ message: "ESP32 reset timeout. No response received." });
+    }, 10000); // Timeout after 10 seconds
+
+    // Listen for response from ESP32
+    const onMessage = (topic: string, message: Buffer) => {
+      if (
+        topic === "soiltrack/reset/status" &&
+        message.toString() === "RESET_SUCCESS"
+      ) {
+        console.log("✅ Reset confirmation received from ESP32!");
+        clearTimeout(timeout); // Cancel timeout
+        res.json({ message: "ESP32 successfully reset!" });
+
+        // Unsubscribe from event after handling response
+        client.removeListener("message", onMessage);
+      }
+    };
+
+    client.on("message", onMessage);
   });
-
-  const resetTimeout = setTimeout(() => {
-    console.error("❌ Device did not respond to reset command");
-    res.status(500).json({ message: "ESP32 reset timeout." });
-  }, 10000);
-
-  const resetListener = (topic: string, message: Buffer) => {
-    if (
-      topic === "soiltrack/reset/status" &&
-      message.toString() === "RESET_SUCCESS"
-    ) {
-      clearTimeout(resetTimeout);
-      client.removeListener("message", resetListener);
-      console.log("✅ Device reset successful");
-      res.json({ message: "Device reset successful" });
-    }
-  };
-
-  client.on("message", resetListener);
 });
 
 const PORT = process.env.PORT || 3000;
