@@ -22,11 +22,16 @@ const client = mqtt.connect(MQTT_BROKER, {
 });
 
 let resetMessageReceived = false;
+let apiKeySaved = false;
 
 client.on("connect", () => {
   console.log("Connected to MQTT Broker");
 
-  const topics = ["soiltrack/moisture", "soiltrack/reset/status"];
+  const topics = [
+    "soiltrack/moisture",
+    "soiltrack/reset/status",
+    "soiltrack/device/api-key/status",
+  ];
 
   client.subscribe(topics, (err) => {
     if (err) {
@@ -45,6 +50,14 @@ client.on("message", (topic, message) => {
     if (messageStr === "RESET_SUCCESS") {
       console.log(`✅ ESP32 responded with: ${messageStr}`);
       resetMessageReceived = true;
+    }
+    return;
+  }
+
+  if (topic === "soiltrack/device/api-key/status") {
+    if (messageStr === "SAVED") {
+      console.log(`✅ ESP32 responded with: ${messageStr}`);
+      apiKeySaved = true;
     }
     return;
   }
@@ -113,6 +126,7 @@ app.post("/reset-wifi", (req: Request, res: Response): void => {
 
 app.post("/send-api-key", (req: Request, res: Response): void => {
   const { mac_address, api_key } = req.body;
+  apiKeySaved = false;
 
   if (!mac_address || !api_key) {
     res.status(400).json({ message: "Missing Parameters" });
@@ -120,10 +134,8 @@ app.post("/send-api-key", (req: Request, res: Response): void => {
   }
 
   const publishTopic = `soiltrack/device/${mac_address}/api-key`;
-  const responseTopic = "soiltrack/device/api-key/status";
 
   console.log(`📡 Sending API Key to ESP32 on topic: ${publishTopic}`);
-  let apiKeySaved = false;
 
   client.publish(publishTopic, api_key, (err) => {
     if (err) {
@@ -146,13 +158,6 @@ app.post("/send-api-key", (req: Request, res: Response): void => {
 
     retries--;
   }, 1000);
-
-  client.on("message", (topic, message) => {
-    if (topic === responseTopic && message.toString().trim() === "SAVED") {
-      console.log("✅ ESP32 confirmed API Key saved.");
-      apiKeySaved = true;
-    }
-  });
 });
 
 const PORT = process.env.PORT || 3000;
