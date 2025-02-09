@@ -77,44 +77,59 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
 });
 
 app.post("/reset-wifi", (req: Request, res: Response): void => {
-  console.log("🔄 Reset request received, waiting for ESP32 response...");
+  let timeout: NodeJS.Timeout;
+  let responded = false;
 
-  const timeout = setTimeout(() => {
-    console.error("❌ Device did not respond to reset command");
-    res
-      .status(500)
-      .json({ message: "ESP32 reset timeout. No response received." });
-
-    // Remove listener after timeout
-    client.removeListener("message", onMessage);
-  }, 10000); // Timeout after 10 seconds
-
+  // Define the listener for ESP32 response
   const onMessage = (topic: string, message: Buffer) => {
     if (
       topic === "soiltrack/reset/status" &&
-      message.toString().trim() === "RESET_SUCCESS"
+      message.toString() === "RESET_SUCCESS"
     ) {
-      console.log("✅ Reset confirmation received from ESP32!");
-      clearTimeout(timeout); // Cancel timeout
-      res.json({ message: "ESP32 successfully reset!" });
+      clearTimeout(timeout);
+      responded = true;
+      console.log(`✅ ESP32 responded with: ${message.toString()}`);
+      res.json({ message: "Device reset successful" });
 
-      // Remove listener after handling response
+      // Unsubscribe and remove the listener to prevent memory leaks
+      client.unsubscribe("soiltrack/reset/status");
       client.removeListener("message", onMessage);
     }
   };
 
-  // Attach listener BEFORE sending MQTT message
-  client.on("message", onMessage);
-
-  // Publish reset command
-  client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
+  // Subscribe to the ESP32 response topic
+  client.subscribe("soiltrack/reset/status", (err) => {
     if (err) {
-      console.error("❌ Error publishing reset command:", err);
-      clearTimeout(timeout); // Cancel timeout if error occurs
-      client.removeListener("message", onMessage);
-      return res.status(500).json({ message: "Error resetting device" });
+      console.error(`❌ Error subscribing to status topic: ${err}`);
+      return res
+        .status(500)
+        .json({ message: "Error subscribing to device response" });
     }
-    console.log("📡 Reset command sent, waiting for ESP32 confirmation...");
+
+    // Publish the reset command
+    client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
+      if (err) {
+        console.error(`❌ Error publishing reset command: ${err}`);
+        return res.status(500).json({ message: "Error resetting device" });
+      }
+
+      console.log(`🔄 Reset Command Sent`);
+
+      // Wait for response with a timeout
+      timeout = setTimeout(() => {
+        if (!responded) {
+          console.error("⏳ Timeout: No response from ESP32");
+          res.status(504).json({ message: "No response from device" });
+
+          // Cleanup
+          client.unsubscribe("soiltrack/reset/status");
+          client.removeListener("message", onMessage);
+        }
+      }, 10000); // 10-second timeout
+    });
+
+    // Attach the listener after subscribing
+    client.on("message", onMessage);
   });
 });
 
