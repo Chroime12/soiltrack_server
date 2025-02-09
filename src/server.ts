@@ -76,6 +76,17 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
   });
 });
 
+app.post("/reset-wifi", (req: Request, res: Response): void => {
+  client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
+    if (err) {
+      console.error(`❌ Error publishing reset command: ${err}`);
+      return res.status(500).json({ message: "Error resetting device" });
+    }
+    console.log(`🔄 Reset Command Sent`);
+    res.json({ message: "Device reset initiated" });
+  });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
