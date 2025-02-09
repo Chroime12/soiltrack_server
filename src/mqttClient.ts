@@ -44,21 +44,26 @@ export const publishMQTT = (topic: string, message: string) => {
 
 export const waitForMQTTResponse = (
   topic: string,
-  expectedMessage: string,
+  expectedMessage?: string,
   timeout: number = 10000
 ) => {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const timeoutHandle = setTimeout(() => {
       mqttEvents.removeListener(topic, listener);
       reject(new Error(`Timeout waiting for response on ${topic}`));
     }, timeout);
 
     const listener = (message: string) => {
-      if (message === expectedMessage) {
-        clearTimeout(timeoutHandle);
-        mqttEvents.removeListener(topic, listener);
-        resolve();
+      clearTimeout(timeoutHandle);
+      mqttEvents.removeListener(topic, listener);
+
+      console.log(`📩 ESP32 Response on '${topic}': ${message}`);
+
+      if (expectedMessage && message !== expectedMessage) {
+        reject(new Error(`Unexpected response: ${message}`));
       }
+
+      resolve(message);
     };
 
     mqttEvents.on(topic, listener);
