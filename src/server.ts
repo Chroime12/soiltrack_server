@@ -21,26 +21,36 @@ const client = mqtt.connect(MQTT_BROKER, {
   password: MQTT_PASSWORD,
 });
 
+let resetResponseReceived = false;
+
 client.on("connect", () => {
   console.log("Connected to MQTT Broker");
 
-  const topic = "soiltrack/moisture";
+  const topics = ["soiltrack/moisture", "soiltrack/reset/status"];
 
-  client.subscribe(topic, (err) => {
+  client.subscribe(topics, (err) => {
     if (err) {
       console.log(`Subscription error: ${err}`);
     } else {
-      console.log(`Subscribed to topic: ${topic}`);
+      console.log(`Subscribed to topic: ${topics.join(", ")}`);
     }
   });
 });
 
 client.on("message", (topic, message) => {
+  const messageStr = message.toString().trim();
   console.log(`📩 Received message on topic '${topic}': ${message.toString()}`);
 
+  if (topic === "soiltrack/reset/status") {
+    if (messageStr === "RESET_SUCCESS") {
+      console.log(`✅ ESP32 responded with: ${messageStr}`);
+      resetResponseReceived = true;
+    }
+    return;
+  }
+
   try {
-    const data = JSON.parse(message.toString());
-    console.log(`🛠 Raw Message Data:`, message);
+    const data = JSON.parse(messageStr);
 
     if (!("moisture1" in data) || !("moisture2" in data)) {
       console.warn(
@@ -77,60 +87,28 @@ app.post("/toggle-pump", (req: Request, res: Response): void => {
 });
 
 app.post("/reset-wifi", (req: Request, res: Response): void => {
-  let timeout: NodeJS.Timeout;
-  let responded = false;
+  console.log("🔄 Reset Request Sent");
+  resetResponseReceived = false;
 
-  // Define the listener for ESP32 response
-  const onMessage = (topic: string, message: Buffer) => {
-    if (
-      topic === "soiltrack/reset/status" &&
-      message.toString() === "RESET_SUCCESS"
-    ) {
-      clearTimeout(timeout);
-      responded = true;
-      console.log(`✅ ESP32 responded with: ${message.toString()}`);
-      res.json({ message: "Device reset successful" });
-
-      // Unsubscribe and remove the listener to prevent memory leaks
-      client.unsubscribe("soiltrack/reset/status");
-      client.removeListener("message", onMessage);
-    }
-  };
-
-  // Subscribe to the ESP32 response topic
-  client.subscribe("soiltrack/reset/status", (err) => {
+  client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
     if (err) {
-      console.error(`❌ Error subscribing to status topic: ${err}`);
-      return res
-        .status(500)
-        .json({ message: "Error subscribing to device response" });
+      console.error(`❌ Error publishing reset command: ${err}`);
+      return res.status(500).json({ message: "Error resetting device" });
     }
-
-    // Publish the reset command
-    client.publish("soiltrack/reset", "RESET_WIFI", (err) => {
-      if (err) {
-        console.error(`❌ Error publishing reset command: ${err}`);
-        return res.status(500).json({ message: "Error resetting device" });
-      }
-
-      console.log(`🔄 Reset Command Sent`);
-
-      // Wait for response with a timeout
-      timeout = setTimeout(() => {
-        if (!responded) {
-          console.error("⏳ Timeout: No response from ESP32");
-          res.status(504).json({ message: "No response from device" });
-
-          // Cleanup
-          client.unsubscribe("soiltrack/reset/status");
-          client.removeListener("message", onMessage);
-        }
-      }, 10000); // 10-second timeout
-    });
-
-    // Attach the listener after subscribing
-    client.on("message", onMessage);
   });
+
+  let retries = 10;
+  const checkInterval = setInterval(() => {
+    if (resetResponseReceived) {
+      clearInterval(checkInterval);
+      return res.json({ message: "Device reset successfully" });
+    }
+    if (retries === 0) {
+      clearInterval(checkInterval);
+      return res.status(500).json({ message: "No response from device." });
+    }
+    retries--;
+  }, 1000);
 });
 
 const PORT = process.env.PORT || 3000;
