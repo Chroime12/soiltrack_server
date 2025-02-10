@@ -7,7 +7,6 @@ router.post(
   "/reset-wifi",
   async (req: Request, res: Response): Promise<void> => {
     console.log("🔄 Reset Request Sent");
-
     try {
       await publishMQTT("soiltrack/reset", "RESET_WIFI");
       await waitForMQTTResponse("soiltrack/reset/status", "RESET_SUCCESS");
@@ -34,14 +33,8 @@ router.post(
 
     try {
       await publishMQTT(publishTopic, api_key);
-
-      const espResponse = await waitForMQTTResponse(
-        "soiltrack/device/api-key/status"
-      );
-
-      console.log(`✅ ESP32 Response: ${espResponse}`);
-
-      res.json({ message: `ESP32 Response: ${espResponse}` });
+      await waitForMQTTResponse("soiltrack/reset/status", "RESET_SUCCESS");
+      res.json({ message: "API Key sent successfully" });
     } catch (error) {
       console.error("❌ Error waiting for ESP32 response:", error);
       res.status(500).json({ message: "No response from ESP32." });
