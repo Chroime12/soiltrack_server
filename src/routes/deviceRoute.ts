@@ -1,5 +1,9 @@
 import { Router, Request, Response } from "express";
-import { publishMQTT, waitForMQTTResponse } from "../mqttClient";
+import {
+  publishMQTT,
+  subscribeToTopics,
+  waitForMQTTResponse,
+} from "../mqttClient";
 
 const router = Router();
 
@@ -64,6 +68,8 @@ router.get(
     const responseTopic = `soiltrack/device/${mac_address}/ping/status`;
 
     console.log(`📡 Pinging ESP32 on topic: ${pingTopic}`);
+
+    subscribeToTopics(responseTopic);
 
     try {
       await publishMQTT(pingTopic, "PING");

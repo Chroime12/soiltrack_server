@@ -7,18 +7,19 @@ export const mqttClient = mqtt.connect(CONFIG.MQTT_BROKER, {
   password: CONFIG.MQTT_PASSWORD,
 });
 const mqttEvents = new EventEmitter();
+const subscribedTopics = new Set<string>();
 
 mqttClient.on("connect", () => {
   console.log("✅ Connected to MQTT Broker");
-  const topics = [
+
+  const initialTopics = [
     "soiltrack/moisture",
     "soiltrack/reset/status",
     "soiltrack/device/api-key/status",
   ];
-  mqttClient.subscribe(topics, (err) => {
-    if (err) console.error("❌ Subscription error:", err);
-    else console.log(`📡 Subscribed to topics: ${topics.join(", ")}`);
-  });
+
+  // Subscribe and track topics
+  subscribeToTopics(initialTopics);
 });
 
 mqttClient.on("message", (topic, message) => {
@@ -27,6 +28,21 @@ mqttClient.on("message", (topic, message) => {
 
   mqttEvents.emit(topic, messageStr);
 });
+
+export const subscribeToTopics = (topics: string | string[]) => {
+  const topicArray = Array.isArray(topics) ? topics : [topics];
+
+  const newTopics = topicArray.filter((topic) => !subscribedTopics.has(topic));
+  if (newTopics.length === 0) return;
+
+  mqttClient.subscribe(newTopics, (err) => {
+    if (err) console.error(`❌ Subscription error:`, err);
+    else {
+      newTopics.forEach((topic) => subscribedTopics.add(topic));
+      console.log(`📡 Subscribed to new topics: ${newTopics.join(", ")}`);
+    }
+  });
+};
 
 export const publishMQTT = (topic: string, message: string) => {
   return new Promise<void>((resolve, reject) => {
@@ -61,12 +77,11 @@ export const waitForMQTTResponse = (
     const listener = (message: string) => {
       console.log(`📩 Received MQTT message on '${topic}': ${message}`);
 
-      // If expectedMessage is provided, check if it matches
       if (expectedMessage && message !== expectedMessage) {
         console.warn(
           `⚠️ Unexpected response on '${topic}': ${message} (Expected: ${expectedMessage})`
         );
-        return; // Ignore and keep listening
+        return;
       }
 
       clearTimeout(timeoutHandle);
@@ -77,26 +92,3 @@ export const waitForMQTTResponse = (
     mqttEvents.on(topic, listener);
   });
 };
-
-// export const waitForMQTTResponse = (
-//   topic: string,
-//   expectedMessage: string,
-//   timeout: number = 10000
-// ) => {
-//   return new Promise<void>((resolve, reject) => {
-//     const timeoutHandle = setTimeout(() => {
-//       mqttEvents.removeListener(topic, listener);
-//       reject(new Error(`Timeout waiting for response on ${topic}`));
-//     }, timeout);
-
-//     const listener = (message: string) => {
-//       if (message === expectedMessage) {
-//         clearTimeout(timeoutHandle);
-//         mqttEvents.removeListener(topic, listener);
-//         resolve();
-//       }
-//     };
-
-//     mqttEvents.on(topic, listener);
-//   });
-// };
