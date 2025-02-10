@@ -50,4 +50,37 @@ router.post(
   }
 );
 
+router.get(
+  "/check-status/:mac_address",
+  async (req: Request, res: Response): Promise<void> => {
+    const { mac_address } = req.params;
+
+    if (!mac_address) {
+      res.status(400).json({ message: "Missing Parameters" });
+      return;
+    }
+
+    const pingTopic = `soiltrack/device/${mac_address}/ping`;
+    const responseTopic = `soiltrack/device/${mac_address}/ping/status`;
+
+    console.log(`📡 Pinging ESP32 on topic: ${pingTopic}`);
+
+    try {
+      await publishMQTT(pingTopic, "PING");
+      const response = await waitForMQTTResponse(responseTopic, "PONG");
+
+      if (response === "PONG") {
+        res.json({ status: "ONLINE" });
+      } else {
+        res.status(500).json({ status: "OFFLINE" });
+      }
+    } catch (error) {
+      console.error("❌ Error waiting for ESP32 response:", error);
+      res
+        .status(500)
+        .json({ status: "OFFLINE", message: "No response from ESP32." });
+    }
+  }
+);
+
 export default router;
