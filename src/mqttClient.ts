@@ -42,32 +42,6 @@ export const publishMQTT = (topic: string, message: string) => {
   });
 };
 
-// export const waitForMQTTResponse = (
-//   topic: string,
-//   expectedMessage?: string,
-//   timeout: number = 10000
-// ) => {
-//   return new Promise<string>((resolve, reject) => {
-//     const timeoutHandle = setTimeout(() => {
-//       mqttEvents.removeListener(topic, listener);
-//       reject(new Error(`Timeout waiting for response on ${topic}`));
-//     }, timeout);
-
-//     const listener = (message: string) => {
-//       clearTimeout(timeoutHandle);
-//       mqttEvents.removeListener(topic, listener);
-
-//       if (expectedMessage && message !== expectedMessage) {
-//         reject(new Error(`Unexpected response: ${message}`));
-//       }
-
-//       resolve(message);
-//     };
-
-//     mqttEvents.on(topic, listener);
-//   });
-// };
-
 export const waitForMQTTResponse = (
   topic: string,
   expectedMessage: string,

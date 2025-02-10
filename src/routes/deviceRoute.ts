@@ -33,7 +33,7 @@ router.post(
 
     try {
       await publishMQTT(publishTopic, api_key);
-      await waitForMQTTResponse("soiltrack/api-key/status", "SAVED");
+      await waitForMQTTResponse("soiltrack/device/api-key/status", "SAVED");
       res.json({ message: "API Key sent successfully" });
     } catch (error) {
       console.error("❌ Error waiting for ESP32 response:", error);
