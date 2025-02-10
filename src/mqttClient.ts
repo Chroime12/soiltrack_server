@@ -44,23 +44,59 @@ export const publishMQTT = (topic: string, message: string) => {
 
 export const waitForMQTTResponse = (
   topic: string,
-  expectedMessage: string,
+  expectedMessage?: string,
   timeout: number = 10000
-) => {
-  return new Promise<void>((resolve, reject) => {
+): Promise<string> => {
+  return new Promise<string>((resolve, reject) => {
+    console.log(
+      `🕒 Waiting for MQTT response on topic: ${topic} (Timeout: ${timeout}ms)`
+    );
+
     const timeoutHandle = setTimeout(() => {
       mqttEvents.removeListener(topic, listener);
+      console.error(`⏳ Timeout: No response received on topic ${topic}`);
       reject(new Error(`Timeout waiting for response on ${topic}`));
     }, timeout);
 
     const listener = (message: string) => {
-      if (message === expectedMessage) {
-        clearTimeout(timeoutHandle);
-        mqttEvents.removeListener(topic, listener);
-        resolve();
+      console.log(`📩 Received MQTT message on '${topic}': ${message}`);
+
+      // If expectedMessage is provided, check if it matches
+      if (expectedMessage && message !== expectedMessage) {
+        console.warn(
+          `⚠️ Unexpected response on '${topic}': ${message} (Expected: ${expectedMessage})`
+        );
+        return; // Ignore and keep listening
       }
+
+      clearTimeout(timeoutHandle);
+      mqttEvents.removeListener(topic, listener);
+      resolve(message);
     };
 
     mqttEvents.on(topic, listener);
   });
 };
+
+// export const waitForMQTTResponse = (
+//   topic: string,
+//   expectedMessage: string,
+//   timeout: number = 10000
+// ) => {
+//   return new Promise<void>((resolve, reject) => {
+//     const timeoutHandle = setTimeout(() => {
+//       mqttEvents.removeListener(topic, listener);
+//       reject(new Error(`Timeout waiting for response on ${topic}`));
+//     }, timeout);
+
+//     const listener = (message: string) => {
+//       if (message === expectedMessage) {
+//         clearTimeout(timeoutHandle);
+//         mqttEvents.removeListener(topic, listener);
+//         resolve();
+//       }
+//     };
+
+//     mqttEvents.on(topic, listener);
+//   });
+// };

@@ -33,8 +33,16 @@ router.post(
 
     try {
       await publishMQTT(publishTopic, api_key);
-      await waitForMQTTResponse("soiltrack/device/api-key/status", "SAVED");
-      res.json({ message: "API Key sent successfully" });
+      const response = await waitForMQTTResponse(
+        "soiltrack/device/api-key/status",
+        "SAVED"
+      );
+
+      if (response === "SAVED") {
+        res.json({ message: "API Key sent and saved successfully" });
+      } else {
+        res.status(400).json({ message: "ESP32 MAC Address Mismatch" });
+      }
     } catch (error) {
       console.error("❌ Error waiting for ESP32 response:", error);
       res.status(500).json({ message: "No response from ESP32." });
