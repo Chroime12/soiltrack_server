@@ -54,4 +54,43 @@ router.post(
   }
 );
 
+router.post(
+  "/get-sensors",
+  async (req: Request, res: Response): Promise<void> => {
+    const { mac_address }: { mac_address: string } = req.body;
+
+    if (!mac_address) {
+      res.status(400).json({ message: "Missing MAC address" });
+      return;
+    }
+
+    const publishTopic = `soiltrack/device/${mac_address}/get-sensors`;
+    const responseTopic = `soiltrack/device/${mac_address}/get-sensors/response`;
+
+    console.log(`📡 Requesting sensor count on topic: ${publishTopic}`);
+
+    try {
+      await publishMQTT(publishTopic, "");
+
+      const sensorData = await waitForMQTTResponse(responseTopic);
+
+      const payload = JSON.parse(sensorData);
+
+      if (!payload.active_sensors) {
+        throw new Error(
+          "Invalid response from ESP32: Missing active_sensors key"
+        );
+      }
+
+      res.json({
+        message: "Sensor count retrieved successfully",
+        active_sensors: payload.active_sensors,
+      });
+    } catch (error) {
+      console.error("❌ Error getting sensor count:", error);
+      res.status(500).json({ message: "Failed to retrieve sensor count." });
+    }
+  }
+);
+
 export default router;
