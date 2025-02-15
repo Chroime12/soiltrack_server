@@ -37,7 +37,17 @@ mqttClient.on("message", (topic, message) => {
       const payload = JSON.parse(messageStr);
       console.log(`🌱 Soil data from MAC: ${macAddress}`, payload);
 
-      if (payload.moisture_levels) {
+      const moistureLevels = [];
+      if (typeof payload.moisture1 === "number") {
+        moistureLevels.push(payload.moisture1);
+      }
+
+      if (typeof payload.moisture2 === "number") {
+        moistureLevels.push(payload.moisture2);
+      }
+
+      if (moistureLevels.length > 0) {
+        console.log(`🌱 Moisture levels from ${macAddress}:`, moistureLevels);
       } else {
         console.warn("⚠️ Invalid soil data payload:", payload);
       }
