@@ -68,6 +68,7 @@ router.post(
     const responseTopic = `soiltrack/device/${mac_address}/get-sensors/response`;
 
     console.log(`📡 Requesting sensor count on topic: ${publishTopic}`);
+    subscribeToTopics(responseTopic);
 
     try {
       await publishMQTT(publishTopic, "GET_SENSOR_COUNT");
