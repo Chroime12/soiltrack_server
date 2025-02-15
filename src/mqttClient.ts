@@ -1,11 +1,14 @@
 import mqtt from "mqtt";
-import { CONFIG } from "./config";
 import { EventEmitter } from "events";
+import * as dotenv from "dotenv";
 
-export const mqttClient = mqtt.connect(CONFIG.MQTT_BROKER, {
-  username: CONFIG.MQTT_USERNAME,
-  password: CONFIG.MQTT_PASSWORD,
+dotenv.config();
+
+export const mqttClient = mqtt.connect(process.env.MQTT_BROKER as string, {
+  username: process.env.MQTT_USERNAME,
+  password: process.env.MQTT_PASSWORD,
 });
+
 const mqttEvents = new EventEmitter();
 const subscribedTopics = new Set<string>();
 
@@ -16,9 +19,9 @@ mqttClient.on("connect", () => {
     "soiltrack/moisture",
     "soiltrack/reset/status",
     "soiltrack/device/api-key/status",
+    "soiltrack/device/+/soil",
   ];
 
-  // Subscribe and track topics
   subscribeToTopics(initialTopics);
 });
 
@@ -27,6 +30,21 @@ mqttClient.on("message", (topic, message) => {
   console.log(`📩 Received message on '${topic}': ${messageStr}`);
 
   mqttEvents.emit(topic, messageStr);
+
+  if (topic.startsWith("soiltrack/device/") && topic.endsWith("/soil")) {
+    const macAddress = topic.split("/")[2];
+    try {
+      const payload = JSON.parse(messageStr);
+      console.log(`🌱 Soil data from MAC: ${macAddress}`, payload);
+
+      if (payload.moisture_levels) {
+      } else {
+        console.warn("⚠️ Invalid soil data payload:", payload);
+      }
+    } catch (err) {
+      console.error("❌ Error processing soil data message:", err);
+    }
+  }
 });
 
 export const subscribeToTopics = (topics: string | string[]) => {

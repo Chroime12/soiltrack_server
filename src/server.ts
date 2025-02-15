@@ -3,8 +3,8 @@ import type { Request, Response } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import mqtt from "mqtt";
 import deviceRoutes from "./routes/deviceRoute";
+import "./mqttClient";
 
 dotenv.config();
 
@@ -13,6 +13,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.use("/device", deviceRoutes);
+app.use("/soiltrack", deviceRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
