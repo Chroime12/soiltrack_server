@@ -70,7 +70,7 @@ router.post(
     console.log(`📡 Requesting sensor count on topic: ${publishTopic}`);
 
     try {
-      await publishMQTT(publishTopic, "");
+      await publishMQTT(publishTopic, "GET_SENSOR_COUNT");
 
       const sensorData = await waitForMQTTResponse(responseTopic);
 
