@@ -14,10 +14,19 @@ authRouter.get(
 
       const deepLink = `soiltrack://reset-password?token=${token}`;
 
-      res.json({
-        message: "Use this deep link on a mobile device",
-        deepLink,
-      });
+      res.send(`
+        <html>
+        <head>
+            <title>Redirecting...</title>
+            <script>
+                window.location.href = "${deepLink}";
+            </script>
+        </head>
+        <body>
+            <p>If you are not redirected, <a href="${deepLink}">click here</a>.</p>
+        </body>
+        </html>
+    `);
     } catch (error) {
       res.status(500).json({ message: "Error resetting device" });
     }
