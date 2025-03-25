@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import deviceRoutes from "./routes/deviceRoute";
 import "./mqttClient";
+import authRouter from "./routes/authRoute";
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+app.use("/auth", authRouter);
 app.use("/device", deviceRoutes);
 app.use("/soiltrack", deviceRoutes);
 

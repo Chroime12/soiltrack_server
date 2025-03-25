@@ -1,6 +1,7 @@
 import mqtt from "mqtt";
 import { EventEmitter } from "events";
 import * as dotenv from "dotenv";
+import supabase from "./lib/supabase";
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ mqttClient.on("connect", () => {
   subscribeToTopics(initialTopics);
 });
 
-mqttClient.on("message", (topic, message) => {
+mqttClient.on("message", async (topic, message) => {
   const messageStr = message.toString().trim();
   console.log(`📩 Received message on '${topic}': ${messageStr}`);
 
@@ -33,26 +34,92 @@ mqttClient.on("message", (topic, message) => {
 
   if (topic.startsWith("soiltrack/device/") && topic.endsWith("/soil")) {
     const macAddress = topic.split("/")[2];
+    const payload = JSON.parse(messageStr);
+
     try {
-      const payload = JSON.parse(messageStr);
-      console.log(`🌱 Soil data from MAC: ${macAddress}`, payload);
+      const { data: sensors, error: sensorsError } = await supabase
+        .from("soil_sensors")
+        .select("sensor_id, sensor_type, sensor_category")
+        .eq("mac_address", macAddress);
 
-      const moistureLevels = [];
-      if (typeof payload.moisture1 === "number") {
-        moistureLevels.push(payload.moisture1);
+      if (sensorsError || !sensors || sensors.length === 0) {
+        console.error(`❌ Error fetching sensor data:`, sensorsError);
+        return;
       }
 
-      if (typeof payload.moisture2 === "number") {
-        moistureLevels.push(payload.moisture2);
-      }
+      const philippineTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Manila",
+      });
 
-      if (moistureLevels.length > 0) {
-        console.log(`🌱 Moisture levels from ${macAddress}:`, moistureLevels);
-      } else {
-        console.warn("⚠️ Invalid soil data payload:", payload);
+      for (const sensor of sensors) {
+        const { sensor_id, sensor_type, sensor_category } = sensor;
+        const sensorData = payload[sensor_type];
+        console.log("Sensor Data is ", sensorData);
+
+        if (sensorData == undefined) {
+          console.warn(`⚠️ No data found for sensor ${sensor_type}`);
+          continue;
+        }
+
+        const { data: plots, error: plotError } = await supabase
+          .from("user_plot_sensors")
+          .select("plot_id")
+          .eq("sensor_id", sensor_id);
+
+        if (plotError || !plots || plots.length === 0) {
+          console.warn(`⚠️ No plot assigned to sensor ${sensor_id}`);
+          continue;
+        }
+
+        const plot_id = plots[0].plot_id;
+
+        if (sensor_category === "Moisture Sensor") {
+          const { error: moistureError } = await supabase
+            .from("moisture_readings")
+            .insert({
+              read_time: philippineTime,
+              soil_moisture: sensorData,
+              plot_id,
+              sensor_id,
+            });
+
+          if (moistureError) {
+            console.error(
+              `❌ Error inserting moisture reading:`,
+              moistureError
+            );
+          }
+        } else if (
+          sensor_category === "NPK Sensor" &&
+          typeof sensorData === "object"
+        ) {
+          const {
+            N: readed_nitrogen,
+            P: readed_phosphorus,
+            K: readed_potassium,
+          } = sensorData;
+
+          const { error: nutrientError } = await supabase
+            .from("nutrient_readings")
+            .insert({
+              read_time: philippineTime,
+              readed_nitrogen,
+              readed_phosphorus,
+              readed_potassium,
+              plot_id,
+              sensor_id,
+            });
+
+          if (nutrientError) {
+            console.error(
+              `❌ Supabase nutrient insert error:`,
+              JSON.stringify(nutrientError, null, 2)
+            );
+          }
+        }
       }
-    } catch (err) {
-      console.error("❌ Error processing soil data message:", err);
+    } catch (e) {
+      console.error(`❌ Error processing sensor data:`, e);
     }
   }
 });
