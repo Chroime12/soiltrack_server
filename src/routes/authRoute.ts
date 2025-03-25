@@ -3,7 +3,7 @@ import { Router, Request, Response } from "express";
 const authRouter = Router();
 
 authRouter.get(
-  "/reset-wifi",
+  "/reset-password",
   async (req: Request, res: Response): Promise<void> => {
     console.log("🔄 Reset Request Sent");
     try {
