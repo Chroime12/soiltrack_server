@@ -5,13 +5,13 @@ const authRouter = Router();
 authRouter.get(
   "/reset-password",
   async (req: Request, res: Response): Promise<void> => {
-    console.log("🔄 Reset Request Sent");
     try {
       const token = req.query.token as string;
       if (!token) {
         res.status(400).json({ message: "Token is required" });
       }
 
+      console.log("🔄 Reset Request Sent", token);
       const deepLink = `soiltrack://reset-password?token=${token}`;
 
       res.send(`
