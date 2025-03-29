@@ -7,12 +7,17 @@ authRouter.get(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const token = req.query.token as string;
-      if (!token) {
-        res.status(400).json({ message: "Token is required" });
+      const email = req.query.email as string;
+
+      if (!token || !email) {
+        res.status(400).json({ message: "Token and email are required" });
+        return;
       }
 
       console.log("🔄 Reset Request Sent", token);
-      const deepLink = `soiltrack://reset-password?token=${token}`;
+      const deepLink = `soiltrack://reset-password?token=${token}&email=${encodeURIComponent(
+        email
+      )}`;
 
       res.send(`
         <html>
