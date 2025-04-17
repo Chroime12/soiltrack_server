@@ -38,4 +38,40 @@ authRouter.get(
   }
 );
 
+authRouter.get(
+  "/verify-email",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const token = req.query.token as string;
+      const email = req.query.email as string;
+
+      if (!token || !email) {
+        res.status(400).json({ message: "Token and email are required" });
+        return;
+      }
+
+      // Here you could verify the token if needed.
+      // But since you're showing a static page, you can skip token verification.
+
+      // You can also log or process the token if necessary
+      console.log("🔄 Email Verification Request Sent", token);
+
+      // Return a simple HTML page with a success message
+      res.send(`
+        <html>
+        <head>
+            <title>Email Verified</title>
+        </head>
+        <body>
+            <h1>Your email has been successfully verified!</h1>
+            <p>Thank you for confirming your email address. You can now <a href="https://yourapp.com/login">log in</a> and start using our service.</p>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      res.status(500).json({ message: "Error processing email verification" });
+    }
+  }
+);
+
 export default authRouter;

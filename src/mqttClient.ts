@@ -61,6 +61,12 @@ mqttClient.on("message", async (topic, message) => {
           continue;
         }
 
+        if (sensorData < 40) {
+          console.log(
+            `⚠️  Sensor ${sensor_type} data is below the set threshold, opening valve and pump`
+          );
+        }
+
         const { data: plots, error: plotError } = await supabase
           .from("user_plot_sensors")
           .select("plot_id")
@@ -99,23 +105,23 @@ mqttClient.on("message", async (topic, message) => {
             K: readed_potassium,
           } = sensorData;
 
-          const { error: nutrientError } = await supabase
-            .from("nutrient_readings")
-            .insert({
-              read_time: philippineTime,
-              readed_nitrogen,
-              readed_phosphorus,
-              readed_potassium,
-              plot_id,
-              sensor_id,
-            });
+          // const { error: nutrientError } = await supabase
+          //   .from("nutrient_readings")
+          //   .insert({
+          //     read_time: philippineTime,
+          //     readed_nitrogen,
+          //     readed_phosphorus,
+          //     readed_potassium,
+          //     plot_id,
+          //     sensor_id,
+          //   });
 
-          if (nutrientError) {
-            console.error(
-              `❌ Supabase nutrient insert error:`,
-              JSON.stringify(nutrientError, null, 2)
-            );
-          }
+          // if (nutrientError) {
+          //   console.error(
+          //     `❌ Supabase nutrient insert error:`,
+          //     JSON.stringify(nutrientError, null, 2)
+          //   );
+          // }
         }
       }
     } catch (e) {
