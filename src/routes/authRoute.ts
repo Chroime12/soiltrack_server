@@ -96,9 +96,8 @@ authRouter.get(
         </head>
         <body>
             <div class="container">
-                <h1>🎉 Email Verified!</h1>
+                <h1>Email Verified!</h1>
                 <p>Thank you for confirming your email address.<br>You can now proceed to login and start using our service.</p>
-                <a href="https://yourapp.com/login">Go to Login</a>
             </div>
         </body>
         </html>
