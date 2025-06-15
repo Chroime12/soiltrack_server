@@ -22,10 +22,20 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "firebase-admin": "^13.4.0",
+    "luxon": "^3.6.1",
     "mqtt": "^5.10.3",
+    "node-cron": "^4.1.0",
     "nodemon": "^3.1.9",
+    "os-utils": "^0.0.14",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
     "soiltrack_server": "file:",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.6.2",
+    "@types/os-utils": "^0.0.4"
   }
 }

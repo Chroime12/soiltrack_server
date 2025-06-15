@@ -2,6 +2,8 @@ import mqtt from "mqtt";
 import { EventEmitter } from "events";
 import * as dotenv from "dotenv";
 import supabase from "./lib/supabase";
+import { handleSoilSensorMessage } from "./handlers/soilSensorHandler";
+// import { handleSoilSensorMessage } from "./controllers/soilSensorController";
 
 dotenv.config();
 
@@ -33,100 +35,7 @@ mqttClient.on("message", async (topic, message) => {
   mqttEvents.emit(topic, messageStr);
 
   if (topic.startsWith("soiltrack/device/") && topic.endsWith("/soil")) {
-    const macAddress = topic.split("/")[2];
-    const payload = JSON.parse(messageStr);
-
-    try {
-      const { data: sensors, error: sensorsError } = await supabase
-        .from("soil_sensors")
-        .select("sensor_id, sensor_type, sensor_category")
-        .eq("mac_address", macAddress);
-
-      if (sensorsError || !sensors || sensors.length === 0) {
-        console.error(`❌ Error fetching sensor data:`, sensorsError);
-        return;
-      }
-
-      const philippineTime = new Date().toLocaleString("en-US", {
-        timeZone: "Asia/Manila",
-      });
-
-      for (const sensor of sensors) {
-        const { sensor_id, sensor_type, sensor_category } = sensor;
-        const sensorData = payload[sensor_type];
-        console.log("Sensor Data is ", sensorData);
-
-        if (sensorData == undefined) {
-          console.warn(`⚠️ No data found for sensor ${sensor_type}`);
-          continue;
-        }
-
-        if (sensorData < 40) {
-          console.log(
-            `⚠️  Sensor ${sensor_type} data is below the set threshold, opening valve and pump`
-          );
-        }
-
-        const { data: plots, error: plotError } = await supabase
-          .from("user_plot_sensors")
-          .select("plot_id")
-          .eq("sensor_id", sensor_id);
-
-        if (plotError || !plots || plots.length === 0) {
-          console.warn(`⚠️ No plot assigned to sensor ${sensor_id}`);
-          continue;
-        }
-
-        const plot_id = plots[0].plot_id;
-
-        if (sensor_category === "Moisture Sensor") {
-          const { error: moistureError } = await supabase
-            .from("moisture_readings")
-            .insert({
-              read_time: philippineTime,
-              soil_moisture: sensorData,
-              plot_id,
-              sensor_id,
-            });
-
-          if (moistureError) {
-            console.error(
-              `❌ Error inserting moisture reading:`,
-              moistureError
-            );
-          }
-        } else if (
-          sensor_category === "NPK Sensor" &&
-          typeof sensorData === "object"
-        ) {
-          const {
-            N: readed_nitrogen,
-            P: readed_phosphorus,
-            K: readed_potassium,
-          } = sensorData;
-
-          // const { error: nutrientError } = await supabase
-          //   .from("nutrient_readings")
-          //   .insert({
-          //     read_time: philippineTime,
-          //     readed_nitrogen,
-          //     readed_phosphorus,
-          //     readed_potassium,
-          //     plot_id,
-          //     sensor_id,
-          //   });
-
-          // if (nutrientError) {
-          //   console.error(
-          //     `❌ Supabase nutrient insert error:`,
-          //     JSON.stringify(nutrientError, null, 2)
-          //   );
-          // }
-        }
-      }
-    } catch (e) {
-      console.error(`❌ Error processing sensor data:`, e);
-    }
+    handleSoilSensorMessage(topic, messageStr);
   }
 });
 
@@ -152,7 +61,7 @@ export const publishMQTT = (topic: string, message: string) => {
         console.error(`❌ Error publishing to ${topic}:`, err);
         reject(err);
       } else {
-        console.log(`📤 Sent message to ${topic}: ${message}`);
+        // console.log(`📤 Sent message to ${topic}: ${message}`);
         resolve();
       }
     });
