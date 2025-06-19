@@ -42,7 +42,6 @@ export const startIrrigation = async ({
 
   if (!isValveOn) {
     await updateValveStatus(plot_id, true);
-    await updatePumpStatus(macAddress, true);
     await saveIrrigationLog(
       macAddress,
       plot_id,

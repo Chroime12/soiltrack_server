@@ -40,7 +40,6 @@ export const stopIrrigation = async ({
   );
 
   await updateValveStatus(plot_id, false);
-  await updatePumpStatus(macAddress, false);
   await stopIrrigationLog(
     macAddress,
     plot_id,

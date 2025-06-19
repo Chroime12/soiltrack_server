@@ -58,12 +58,15 @@ export const handleScheduledIrrigation = async () => {
       continue;
     }
 
-    const { valve_tagging, isValveOn, user_id } = plotData;
+    const { valve_tagging, isValveOn, user_id, irrigation_type } = plotData;
     const macAddress = await getMacAddress(user_id);
+
     if (!macAddress) {
       console.warn(`⚠️ No MAC address for plot ${plot_id}`);
       continue;
     }
+
+    if (irrigation_type !== "Scheduled Irrigation") continue;
 
     const lastTriggeredDate = last_triggered ? new Date(last_triggered) : null;
     const alreadyTriggeredToday =

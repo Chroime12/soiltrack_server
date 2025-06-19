@@ -55,15 +55,13 @@ export async function handleSoilSensorMessage(
       return;
     }
 
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
-    const THIRTY_MINUTES = 30 * 60 * 1000;
     const now = Date.now();
+    const THIRTY_MINUTES = 10 * 60 * 1000;
+    const THIRTY_MINUTES_NPK = 10 * 60 * 1000;
 
     for (const { sensor_id, sensor_type, sensor_category } of sensors) {
       const sensorData = payload[sensor_type];
       if (sensorData === undefined) continue;
-
-      // console.info(`📊 Received data for sensor ${sensor_type}`, sensorData);
 
       const plot_id = await getPlotId(sensor_id);
       if (!plot_id) {
@@ -94,37 +92,42 @@ export async function handleSoilSensorMessage(
         ? new Date(sensorRecord.last_data_saved).getTime()
         : 0;
 
-      const isIrrigating = plotData?.isValveOn;
-      const shouldSave = isIrrigating || now - lastSaveTime > THIRTY_MINUTES;
+      // const isAutomated = plotData.irrigation_type === "Automated Irrigation";
+      // const isIrrigating = plotData?.isValveOn;
+      // const shouldSave =
+      //   (isAutomated && isIrrigating) || now - lastSaveTime > THIRTY_MINUTES;
+
+      const shouldSave = now - lastSaveTime > THIRTY_MINUTES;
 
       if (shouldSave) {
-        // if (sensor_category === "Moisture Sensor") {
-        //   processedMoistureSensor = true;
-        //   await saveMoistureReadings(sensor_id, plot_id, read_time, sensorData);
-        // } else if (sensor_category === "NPK Sensor") {
-        //   const { N: nitrogen, P: phosphorus, K: potassium } = sensorData || {};
+        if (sensor_category === "Moisture Sensor") {
+          processedMoistureSensor = true;
+          await saveMoistureReadings(sensor_id, plot_id, read_time, sensorData);
+        } else if (sensor_category === "NPK Sensor") {
+          const { N: nitrogen, P: phosphorus, K: potassium } = sensorData || {};
 
-        //   if (
-        //     nitrogen !== undefined &&
-        //     phosphorus !== undefined &&
-        //     potassium !== undefined
-        //   ) {
-        //     console.info(`Saving nutrient data for plot ${plot_id} `);
-        //     await saveNutrientReading(
-        //       sensor_id,
-        //       plot_id,
-        //       read_time,
-        //       nitrogen,
-        //       phosphorus,
-        //       potassium
-        //     );
-        //   }
-        // }
+          if (
+            nitrogen !== undefined &&
+            phosphorus !== undefined &&
+            potassium !== undefined
+          ) {
+            console.info(`💾 Saving nutrient data for plot ${plot_id}`);
+            await saveNutrientReading(
+              sensor_id,
+              plot_id,
+              read_time,
+              nitrogen,
+              phosphorus,
+              potassium
+            );
+          }
+        }
 
-        // await supabase
-        //   .from("soil_sensors")
-        //   .update({ last_data_saved: new Date().toISOString() })
-        //   .eq("sensor_id", sensor_id);
+        await supabase
+          .from("soil_sensors")
+          .update({ last_data_saved: new Date().toISOString() })
+          .eq("sensor_id", sensor_id);
+
         console.info(
           `💾 Saving data for sensor ${sensor_type} on plot ${plot_id} at ${read_time}`
         );
@@ -134,21 +137,12 @@ export async function handleSoilSensorMessage(
         );
       }
 
-      if (sensor_category !== "Moisture Sensor") continue;
-      if (!cropData) continue;
+      if (sensor_category !== "Moisture Sensor" || !cropData) continue;
 
-      if (plotData.irrigation_type !== "Automated Irrigation") {
-        console.info(
-          `🚫 Plot ${plot_id} is not set for automated irrigation. Skipping...`
-        );
-        continue;
-      }
+      if (plotData.irrigation_type !== "Automated Irrigation") continue;
 
       const { valve_tagging, isValveOn } = plotData;
-      const moistureBelow =
-        cropData !== null && cropData !== undefined
-          ? sensorData < cropData.moisture_min
-          : false;
+      const moistureBelow = sensorData < cropData.moisture_min;
 
       if (moistureBelow) {
         await publishMQTT(

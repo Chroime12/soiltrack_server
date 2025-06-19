@@ -3,6 +3,7 @@ import { EventEmitter } from "events";
 import * as dotenv from "dotenv";
 import supabase from "./lib/supabase";
 import { handleSoilSensorMessage } from "./handlers/soilSensorHandler";
+import { handleAutoClosePumpMessage } from "./handlers/autoClosePumpHandler";
 // import { handleSoilSensorMessage } from "./controllers/soilSensorController";
 
 dotenv.config();
@@ -23,6 +24,7 @@ mqttClient.on("connect", () => {
     "soiltrack/reset/status",
     "soiltrack/device/api-key/status",
     "soiltrack/device/+/soil",
+    "soiltrack/device/+/pump-timer-closed/status",
   ];
 
   subscribeToTopics(initialTopics);
@@ -36,6 +38,12 @@ mqttClient.on("message", async (topic, message) => {
 
   if (topic.startsWith("soiltrack/device/") && topic.endsWith("/soil")) {
     handleSoilSensorMessage(topic, messageStr);
+  } else if (
+    topic.startsWith("soiltrack/device/") &&
+    topic.endsWith("/pump-timer-closed/status")
+  ) {
+    console.log(`🔄 Pump timer closed message received on '${topic}'`);
+    handleAutoClosePumpMessage(topic, messageStr);
   }
 });
 
